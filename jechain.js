@@ -57,4 +57,4 @@ const JeChain = new Blockchain();
 JeChain.addBlock(new Block(Date.now().toString(), ["Hello", "World"]));
 JeChain.addBlock(new Block(Date.now().toString(), ["Hello", "Wurld"]));
 JeChain.addBlock(new Block(Date.now().toString(), ["Hello", "Woold"]));
-console.log(JeChain.chain);
+console.log(JeChain);
