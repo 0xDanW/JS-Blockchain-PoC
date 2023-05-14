@@ -1,6 +1,10 @@
 const crypto = require("crypto"), SHA256 = message => crypto.createHash("sha256").update(message).digest("hex");
 const EC = require("elliptic").ec, ec = new EC("secp256k1");
 
+// const keyPair = ec.genKeyPair();
+// public key: keyPair.getPublic("hex");
+// private key: keyPair.getPrivate("hex");
+
 class Block {
     constructor (timestamp = "", data = []) {
         this.timestamp = timestamp;
@@ -70,6 +74,12 @@ class Transaction {
         this.from = from;
         this.to = to;
         this.amount = amount;
+    }
+
+    sign(keyPair) {
+        if (keyPair.getPublic("hex") === this.from) {
+            
+        }
     }
 }
 
