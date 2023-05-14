@@ -1,4 +1,5 @@
 const crypto = require("crypto"), SHA256 = message => crypto.createHash("sha256").update(message).digest("hex");
+const EC = require("elliptic").ec, ec = new EC("secp256k1");
 
 class Block {
     constructor (timestamp = "", data = []) {
@@ -26,6 +27,8 @@ class Blockchain {
         this.chain = [new Block(Date.now().toString())];
         this.difficulty = 1;
         this.blockTime = 30000;
+        this.transactions = [];
+        this.reward = 297;
     }
 
     getLastBlock() {
@@ -40,6 +43,15 @@ class Blockchain {
         this.difficulty += Date.now() - parseInt(this.getLastBlock().timestamp) < this.blockTime ? 1 : -1;
     }
 
+    addTransaction(Transaction) {
+        this.transactions.push(this.transaction);
+    }
+
+    miningTransactions(rewardAddress) {
+        this.addBlock(new Block(Date.now().toString(), [new Transaction(CREATE_REWARD_ADDRESS, rewardAddress, this.reward) ,...this.transactions]));
+        this.transactions = [];
+    }
+
     isValid(blockchain = this) {
         for (let i=1; i<blockchain.chain.length; i++) {
             const currentBlock = blockchain.chain[i];
@@ -52,6 +64,16 @@ class Blockchain {
         return true;
     }
 }
+
+class Transaction {
+    constructor (from, to, amount) {
+        this.from = from;
+        this.to = to;
+        this.amount = amount;
+    }
+}
+
+
 
 const JeChain = new Blockchain();
 JeChain.addBlock(new Block(Date.now().toString(), ["Hello", "World"]));
