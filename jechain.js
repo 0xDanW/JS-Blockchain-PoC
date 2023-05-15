@@ -1,5 +1,8 @@
 const crypto = require("crypto"), SHA256 = message => crypto.createHash("sha256").update(message).digest("hex");
 const EC = require("elliptic").ec, ec = new EC("secp256k1");
+const MINT_KEY_PAIR = ec.genKeyPair();
+const MINT_PUBLIC_ADDRESS = MINT_KEY_PAIR.getPublic("hex");
+const holderKeyPair = ec.genKeyPair();
 
 // const keyPair = ec.genKeyPair();
 // public key: keyPair.getPublic("hex");
@@ -24,11 +27,16 @@ class Block {
             this.hash = this.getHash();
         }
     }
+
+    isValidTransactions(chain) {
+        return this.data.every(transaction => transaction.isValid(transaction, chain));
+    }
 }
 
 class Blockchain {
     constructor() {
-        this.chain = [new Block(Date.now().toString())];
+        const initialCoinRelease = new Transaction(MINT_PUBLIC_ADDRESS, holderKeyPair.getPublic("hex"), 100000)
+        this.chain = [new Block(Date.now().toString(), [initialCoinRelease])];
         this.difficulty = 1;
         this.blockTime = 30000;
         this.transactions = [];
@@ -37,6 +45,22 @@ class Blockchain {
 
     getLastBlock() {
         return this.chain[this.chain.length -1];
+    }
+
+    getBalance(address) {
+        let balance = 0;
+        this.chain.forEach(block => {
+            block.data.forEach(transaction => {
+                if (transaction.from === address) {
+                    balance -= transaction.amount;
+                    balance -= transaction.gas
+                }
+                if (transaction.to === address) {
+                    balance += transaction.amount;
+                }
+            })
+        })
+        return balance;
     }
 
     addBlock(block) {
@@ -48,11 +72,19 @@ class Blockchain {
     }
 
     addTransaction(Transaction) {
-        this.transactions.push(this.transaction);
+        if (transaction.isValid(transaction, this)) {
+            this.transactions.push(this.transaction);
+        }
     }
 
-    miningTransactions(rewardAddress) {
-        this.addBlock(new Block(Date.now().toString(), [new Transaction(CREATE_REWARD_ADDRESS, rewardAddress, this.reward) ,...this.transactions]));
+    mineTransactions(rewardAddress) {
+        let gas = 0;
+        this.transactions.forEach(transaction => {
+            gas += transaction.gas;
+        })
+        const reward = new Transaction(MINT_PUBLIC_ADDRESS, rewardAddress, this.reward + gas);
+        rewardTransaction.sign(MINT_KEY_PAIR);
+        if (this.transactions.length !== 0) this.addBlock(new Block(Date.now().toString(), [rewardTransaction, ...this.transactions]));
         this.transactions = [];
     }
 
@@ -61,7 +93,9 @@ class Blockchain {
             const currentBlock = blockchain.chain[i];
             const prevBlock = blockchain.chain[i-1];
 
-            if (currentBlock.hash !== currentBlock.getHash() || currentBlock.prevHash !== prevBlock.hash) {
+            if (currentBlock.hash !== currentBlock.getHash() || 
+                currentBlock.prevHash !== prevBlock.hash ||
+                currentBlock.hasValidTransactions(blockchain)) {
                 return false;
             }
         }
@@ -70,23 +104,30 @@ class Blockchain {
 }
 
 class Transaction {
-    constructor (from, to, amount) {
+    constructor (from, to, amount, gas = 0) {
         this.from = from;
         this.to = to;
         this.amount = amount;
+        this.gas = gas;
     }
 
     sign(keyPair) {
         if (keyPair.getPublic("hex") === this.from) {
-            
+            this.signature = keyPair.sign(SHA256(this.from + this.to + this.amount + this.gas), "base64").toDER("hex")
         }
+    }
+
+    isValid(tx, chain) {
+        return (
+            tx.from &&
+            tx.to &&
+            tx.amount &&
+            (chain.getBalance(tx.from) >= tx.amount + tx.gas || tx.from === MINT_PUBLIC_ADDRESS && tx.amount === this.reward) &&
+            ec.keyFromPublic(tx.from, "hex").verify(SHA256(tx.from + tx.to + tx.amount + tx.gas), tx.signature)
+        );
     }
 }
 
 
-
-const JeChain = new Blockchain();
-JeChain.addBlock(new Block(Date.now().toString(), ["Hello", "World"]));
-JeChain.addBlock(new Block(Date.now().toString(), ["Hello", "Wurld"]));
-JeChain.addBlock(new Block(Date.now().toString(), ["Hello", "Woold"]));
-console.log(JeChain);
+const girlfriendWallet = ec.genKeyPair();
+const transaction = new Transaction(holderKeyPair.getPublic("hex"))
